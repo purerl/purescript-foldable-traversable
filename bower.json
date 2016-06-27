@@ -21,12 +21,9 @@
     "purescript-maybe": "^1.0.0"
   },
   "devDependencies": {
-    "purescript-assert": "../purescript-assert#master",
-    "purescript-console": "../purescript-console#master",
-    "purescript-integers": "../purescript-integers#master",
-    "purescript-math": "../purescript-math#master"
-  },
-  "resolutions": {
-    "purescript-prelude": "master"
+    "purescript-assert": "git://github.com/purerl/purescript-assert.git#master",
+    "purescript-console": "git://github.com/purerl/purescript-console.git#master",
+    "purescript-integers": "git://github.com/purerl/purescript-integers#master",
+    "purescript-math": "git://github.com/purerl/purescript-math#master"
   }
 }

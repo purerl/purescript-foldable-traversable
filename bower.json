@@ -17,13 +17,16 @@
     "package.json"
   ],
   "dependencies": {
-    "purescript-bifunctors": "^1.0.0",
-    "purescript-maybe": "^1.0.0"
+    "purescript-bifunctors": "^2.0.0",
+    "purescript-maybe": "^2.0.0"
   },
   "devDependencies": {
     "purescript-assert": "git://github.com/purerl/purescript-assert.git#master",
     "purescript-console": "git://github.com/purerl/purescript-console.git#master",
     "purescript-integers": "git://github.com/purerl/purescript-integers#master",
     "purescript-math": "git://github.com/purerl/purescript-math#master"
+  },
+  "resolutions": {
+    "purescript-prelude": "master"
   }
 }

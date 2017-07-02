@@ -1,0 +1,14 @@
+{
+    "name": "foldable-traversable",
+    "set": "erl-0.10.5",
+    "source": "https://github.com/purerl/package-sets.git",
+    "depends": [
+      "bifunctors",
+      "control",
+      "invariant",
+      "maybe",
+      "monoid",
+      "newtype",
+      "prelude"    
+]
+}

@@ -8,7 +8,7 @@ import Control.Monad.Eff.Console (CONSOLE, log)
 import Data.Bifoldable (class Bifoldable, bifoldl, bifoldr, bifoldMap, bifoldrDefault, bifoldlDefault, bifoldMapDefaultR, bifoldMapDefaultL)
 import Data.Bifunctor (class Bifunctor, bimap)
 import Data.Bitraversable (class Bitraversable, bisequenceDefault, bitraverse, bisequence, bitraverseDefault)
-import Data.Foldable (class Foldable, foldl, foldr, foldMap, foldrDefault, foldlDefault, foldMapDefaultR, foldMapDefaultL, minimumBy, minimum, maximumBy, maximum, find, findMap)
+import Data.Foldable (class Foldable, foldl, foldr, foldMap, foldrDefault, foldlDefault, foldMapDefaultR, foldMapDefaultL, minimumBy, minimum, maximumBy, maximum, find, findMap, length, null, surroundMap)
 import Data.Function (on)
 import Data.Int (toNumber)
 import Data.Maybe (Maybe(..))
@@ -25,6 +25,8 @@ main :: Eff (console :: CONSOLE, assert :: ASSERT) Unit
 main = do
   log "Test foldableArray instance"
   testFoldableArrayWith 20
+
+  assert $ foldMapDefaultL (\x -> [x]) [1, 2] == [1, 2]
 
   log "Test foldableArray instance is stack safe"
   testFoldableArrayWith 20000
@@ -103,11 +105,36 @@ main = do
               (map (negate <<< toNumber) (arrayFrom1UpTo 10))
       == Just (-1.0)
 
+  log "Test null"
+  assert $ null Nothing == true
+  assert $ null (Just 1) == false
+  assert $ null [] == true
+  assert $ null [0] == false
+  assert $ null [0,1] == false
+
+  log "Test length"
+  assert $ length Nothing == 0
+  assert $ length (Just 1) == 1
+  assert $ length [] == 0
+  assert $ length [1] == 1
+  assert $ length [1, 2] == 2
+
+  log "Test surroundMap"
+  assert $ "*" == surroundMap "*" show ([] :: Array Int)
+  assert $ "*1*" == surroundMap "*" show [1]
+  assert $ "*1*2*" == surroundMap "*" show [1, 2]
+  assert $ "*1*2*3*" == surroundMap "*" show [1, 2, 3]
+
   log "All done!"
 
 
-testFoldableFWith :: forall f e. (Foldable f, Eq (f Int)) =>
-                     (Int -> f Int) -> Int -> Eff (assert :: ASSERT | e) Unit
+testFoldableFWith
+  :: forall f e
+   . Foldable f
+  => Eq (f Int)
+  => (Int -> f Int)
+  -> Int
+  -> Eff (assert :: ASSERT | e) Unit
 testFoldableFWith f n = do
   let dat = f n
   let expectedSum = (n / 2) * (n + 1)
@@ -120,8 +147,13 @@ testFoldableArrayWith :: forall eff. Int -> Eff (assert :: ASSERT | eff) Unit
 testFoldableArrayWith = testFoldableFWith arrayFrom1UpTo
 
 
-testTraversableFWith :: forall f e. (Traversable f, Eq (f Int)) =>
-                        (Int -> f Int) -> Int -> Eff (assert :: ASSERT | e) Unit
+testTraversableFWith
+  :: forall f e
+   . Traversable f
+  => Eq (f Int)
+  => (Int -> f Int)
+  -> Int
+  -> Eff (assert :: ASSERT | e) Unit
 testTraversableFWith f n = do
   let dat = f n
 
@@ -256,10 +288,15 @@ instance bitraversableIOr :: Bitraversable IOr where
   bisequence (Fst fst)      = Fst <$> fst
   bisequence (Snd snd)      = Snd <$> snd
 
-testBifoldableIOrWith :: forall t e. (Bifoldable t, Eq (t Int Int)) =>
-                         (forall l r. IOr l r -> t l r) ->
-                         Int -> Int -> Int ->
-                         Eff (assert :: ASSERT | e) Unit
+testBifoldableIOrWith
+  :: forall t e
+   . Bifoldable t
+  => Eq (t Int Int)
+  => (forall l r. IOr l r -> t l r)
+  -> Int
+  -> Int
+  -> Int
+  -> Eff (assert :: ASSERT | e) Unit
 testBifoldableIOrWith lift fst snd u = do
   assert $ bifoldr (+) (*) u (lift $ Both fst snd) == fst + (snd * u)
   assert $ bifoldr (+) (*) u (lift $ Fst fst)      == fst + u
@@ -273,9 +310,12 @@ testBifoldableIOrWith lift fst snd u = do
   assert $ bifoldMap Additive Additive (lift $ Fst fst)      == Additive fst
   assert $ bifoldMap Additive Additive (lift $ Snd snd)      == Additive snd
 
-testBitraversableIOrWith :: forall t e. (Bitraversable t, Eq (t Boolean Boolean)) =>
-                        (forall l r. IOr l r -> t l r) ->
-                        Eff (assert :: ASSERT | e) Unit
+testBitraversableIOrWith
+  :: forall t e
+   . Bitraversable t
+  => Eq (t Boolean Boolean)
+  => (forall l r. IOr l r -> t l r)
+  -> Eff (assert :: ASSERT | e) Unit
 testBitraversableIOrWith lift = do
   let just a = Just (lift a)
   assert $ bisequence (lift (Both (Just true) (Just false))) == just (Both true false)

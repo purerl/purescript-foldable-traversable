@@ -29,11 +29,19 @@ module Data.Foldable
   , minimumBy
   , null
   , length
+  , lookup
   ) where
 
 import Prelude
 
 import Control.Plus (class Plus, alt, empty)
+import Data.Const (Const)
+import Data.Either (Either(..))
+import Data.Functor.App (App(..))
+import Data.Functor.Compose (Compose(..))
+import Data.Functor.Coproduct (Coproduct, coproduct)
+import Data.Functor.Product (Product(..))
+import Data.Identity (Identity(..))
 import Data.Maybe (Maybe(..))
 import Data.Maybe.First (First(..))
 import Data.Maybe.Last (Last(..))
@@ -44,6 +52,7 @@ import Data.Monoid.Dual (Dual(..))
 import Data.Monoid.Endo (Endo(..))
 import Data.Monoid.Multiplicative (Multiplicative(..))
 import Data.Newtype (alaF, unwrap)
+import Data.Tuple (Tuple(..))
 
 -- | `Foldable` represents data structures which can be _folded_.
 -- |
@@ -169,6 +178,49 @@ instance foldableMultiplicative :: Foldable Multiplicative where
   foldl f z (Multiplicative x) = z `f` x
   foldMap f (Multiplicative x) = f x
 
+instance foldableEither :: Foldable (Either a) where
+  foldr _ z (Left _)  = z
+  foldr f z (Right x) = f x z
+  foldl _ z (Left _)  = z
+  foldl f z (Right x) = f z x
+  foldMap f (Left _)  = mempty
+  foldMap f (Right x) = f x
+
+instance foldableTuple :: Foldable (Tuple a) where
+  foldr f z (Tuple _ x) = f x z
+  foldl f z (Tuple _ x) = f z x
+  foldMap f (Tuple _ x) = f x
+
+instance foldableIdentity :: Foldable Identity where
+  foldr f z (Identity x) = f x z
+  foldl f z (Identity x) = f z x
+  foldMap f (Identity x) = f x
+
+instance foldableConst :: Foldable (Const a) where
+  foldr _ z _ = z
+  foldl _ z _ = z
+  foldMap _ _ = mempty
+
+instance foldableProduct :: (Foldable f, Foldable g) => Foldable (Product f g) where
+  foldr f z (Product (Tuple fa ga)) = foldr f (foldr f z ga) fa
+  foldl f z (Product (Tuple fa ga)) = foldl f (foldl f z fa) ga
+  foldMap f (Product (Tuple fa ga)) = foldMap f fa <> foldMap f ga
+
+instance foldableCoproduct :: (Foldable f, Foldable g) => Foldable (Coproduct f g) where
+  foldr f z = coproduct (foldr f z) (foldr f z)
+  foldl f z = coproduct (foldl f z) (foldl f z)
+  foldMap f = coproduct (foldMap f) (foldMap f)
+
+instance foldableCompose :: (Foldable f, Foldable g) => Foldable (Compose f g) where
+  foldr f i (Compose fga) = foldr (flip (foldr f)) i fga
+  foldl f i (Compose fga) = foldl (foldl f) i fga
+  foldMap f (Compose fga) = foldMap (foldMap f) fga
+
+instance foldableApp :: Foldable f => Foldable (App f) where
+  foldr f i (App x) = foldr f i x
+  foldl f i (App x) = foldl f i x
+  foldMap f (App x) = foldMap f x
+
 -- | Fold a data structure, accumulating values in some `Monoid`.
 fold :: forall f m. Foldable f => Monoid m => f m -> m
 fold = foldMap identity
@@ -177,8 +229,8 @@ fold = foldMap identity
 -- |
 -- | Note: this function is not generally stack-safe, e.g., for monads which
 -- | build up thunks a la `Eff`.
-foldM :: forall f m a b. Foldable f => Monad m => (a -> b -> m a) -> a -> f b -> m a
-foldM f a0 = foldl (\ma b -> ma >>= flip f b) (pure a0)
+foldM :: forall f m a b. Foldable f => Monad m => (b -> a -> m b) -> b -> f a -> m b
+foldM f b0 = foldl (\b a -> b >>= flip f a) (pure b0)
 
 -- | Traverse a data structure, performing some effects encoded by an
 -- | `Applicative` functor at each value, ignoring the final result.
@@ -240,6 +292,19 @@ oneOfMap f = foldr (alt <<< f) empty
 
 -- | Fold a data structure, accumulating values in some `Monoid`,
 -- | combining adjacent elements using the specified separator.
+-- |
+-- | For example:
+-- |
+-- | ```purescript
+-- | > intercalate ", " ["Lorem", "ipsum", "dolor"]
+-- | = "Lorem, ipsum, dolor"
+-- |
+-- | > intercalate "*" ["a", "b", "c"]
+-- | = "a*b*c"
+-- |
+-- | > intercalate [1] [[2, 3], [4, 5], [6, 7]]
+-- | = [2, 3, 1, 4, 5, 1, 6, 7]
+-- | ```
 intercalate :: forall f m. Foldable f => Monoid m => m -> f m -> m
 intercalate sep xs = (foldl go { init: true, acc: mempty } xs).acc
   where
@@ -400,3 +465,7 @@ null = foldr (\_ _ -> false) true
 -- | is no general way to do better.
 length :: forall a b f. Foldable f => Semiring b => f a -> b
 length = foldl (\c _ -> add one c) zero
+
+-- | Lookup a value in a data structure of `Tuple`s, generalizing association lists.
+lookup :: forall a b f. Foldable f => Eq a => a -> f (Tuple a b) -> Maybe b
+lookup a = unwrap <<< foldMap \(Tuple a' b) -> First (if a == a' then Just b else Nothing)

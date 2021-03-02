@@ -6,13 +6,15 @@ import Data.Bifoldable (class Bifoldable, bifoldl, bifoldr, bifoldMap, bifoldrDe
 import Data.Bifunctor (class Bifunctor, bimap)
 import Data.Bitraversable (class Bitraversable, bisequenceDefault, bitraverse, bisequence, bitraverseDefault)
 import Data.Foldable (class Foldable, find, findMap, fold, indexl, indexr, foldMap, foldMapDefaultL, foldMapDefaultR, foldl, foldlDefault, foldr, foldrDefault, length, maximum, maximumBy, minimum, minimumBy, null, surroundMap)
-import Data.FoldableWithIndex (class FoldableWithIndex, findWithIndex, foldMapWithIndex, foldMapWithIndexDefaultL, foldMapWithIndexDefaultR, foldlWithIndex, foldlWithIndexDefault, foldrWithIndex, foldrWithIndexDefault, surroundMapWithIndex)
+import Data.FoldableWithIndex (class FoldableWithIndex, findWithIndex, findMapWithIndex, foldMapWithIndex, foldMapWithIndexDefaultL, foldMapWithIndexDefaultR, foldlWithIndex, foldlWithIndexDefault, foldrWithIndex, foldrWithIndexDefault, surroundMapWithIndex)
 import Data.Function (on)
 import Data.FunctorWithIndex (class FunctorWithIndex, mapWithIndex)
 import Data.Int (toNumber, pow)
 import Data.Maybe (Maybe(..))
 import Data.Monoid.Additive (Additive(..))
 import Data.Newtype (unwrap)
+import Data.Semigroup.Foldable (class Foldable1, foldr1, foldl1, foldr1Default, foldl1Default)
+import Data.Semigroup.Foldable as Foldable1
 import Data.Traversable (class Traversable, sequenceDefault, traverse, sequence, traverseDefault)
 import Data.TraversableWithIndex (class TraversableWithIndex, traverseWithIndex)
 import Effect (Effect, foreachE)
@@ -23,6 +25,23 @@ import Unsafe.Coerce (unsafeCoerce)
 
 foreign import arrayFrom1UpTo :: Int -> Array Int
 foreign import arrayReplicate :: forall a. Int -> a -> Array a
+
+foreign import data NEArray :: Type -> Type
+foreign import mkNEArray :: forall r a. r -> (NEArray a -> r) -> Array a -> r
+foreign import foldMap1NEArray :: forall r a. (r -> r -> r) -> (a -> r) -> NEArray a -> r
+
+instance foldableNEArray :: Foldable NEArray where
+  foldMap = foldMap1NEArray append
+  foldl f = foldlDefault f
+  foldr f = foldrDefault f
+
+instance foldable1NEArray :: Foldable1 NEArray where
+  foldr1 f = foldr1Default f
+  foldl1 f = foldl1Default f
+  foldMap1 = foldMap1NEArray append
+
+maybeMkNEArray :: forall a. Array a -> Maybe (NEArray a)
+maybeMkNEArray = mkNEArray Nothing Just
 
 foldableLength :: forall f a. Foldable f => f a -> Int
 foldableLength = unwrap <<< foldMap (const (Additive 1))
@@ -129,6 +148,10 @@ main = do
     let pred x = if x > 5 then Just (x * 100) else Nothing
     assert $ findMap pred [1, 5, 10, 20] == Just 1000
 
+  log "Test findMapWithIndex" *> do
+    let pred i x = if x >= 5 && i >= 3 then Just { i, x } else Nothing
+    assert $ findMapWithIndex pred [1, 5, 10, 20] == Just { i: 3, x: 20 }
+
   log "Test maximum"
   assert $ maximum (arrayFrom1UpTo 10) == Just 10
 
@@ -172,6 +195,22 @@ main = do
   assert $ "*0a*" == surroundMapWithIndex "*" (\i x -> show i <> x) ["a"]
   assert $ "*0a*1b*" == surroundMapWithIndex "*" (\i x -> show i <> x) ["a", "b"]
   assert $ "*0a*1b*2c*" == surroundMapWithIndex "*" (\i x -> show i <> x) ["a", "b", "c"]
+
+  log "Test Foldable1 defaults"
+  assert $ "(a(b(cd)))" == foldMap (foldr1 (\x y -> "(" <> x <> y <> ")")) (maybeMkNEArray ["a", "b", "c", "d"])
+  assert $ "(((ab)c)d)" == foldMap (foldl1 (\x y -> "(" <> x <> y <> ")")) (maybeMkNEArray ["a", "b", "c", "d"])
+
+  log "Test maximumBy"
+  assert $
+    (Foldable1.maximumBy (compare `on` abs) <$>
+        (maybeMkNEArray (negate <<< toNumber <$> arrayFrom1UpTo 10)))
+      == Just (-10.0)
+
+  log "Test minimumBy"
+  assert $
+    (Foldable1.minimumBy (compare `on` abs) <$>
+        (maybeMkNEArray (negate <<< toNumber <$> arrayFrom1UpTo 10)))
+      == Just (-1.0)
 
   log "All done!"
 

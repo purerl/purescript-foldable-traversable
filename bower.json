@@ -5,7 +5,7 @@
   "license": "BSD-3-Clause",
   "repository": {
     "type": "git",
-    "url": "git://github.com/purescript/purescript-foldable-traversable.git"
+    "url": "https://github.com/purescript/purescript-foldable-traversable.git"
   },
   "ignore": [
     "**/.*",
@@ -17,18 +17,23 @@
     "package.json"
   ],
   "dependencies": {
-    "purescript-bifunctors": "^4.0.0",
-    "purescript-control": "^4.0.0",
-    "purescript-maybe": "^4.0.0",
-    "purescript-newtype": "^3.0.0",
-    "purescript-orders": "^4.0.0",
-    "purescript-prelude": "^4.0.0"
+    "purescript-bifunctors": "^5.0.0",
+    "purescript-const": "^5.0.0",
+    "purescript-control": "^5.0.0",
+    "purescript-either": "^5.0.0",
+    "purescript-functors": "^4.0.0",
+    "purescript-identity": "^5.0.0",
+    "purescript-maybe": "^5.0.0",
+    "purescript-newtype": "^4.0.0",
+    "purescript-orders": "^5.0.0",
+    "purescript-prelude": "^5.0.0",
+    "purescript-tuples": "^6.0.0"
   },
   "devDependencies": {
-    "purescript-assert": "^4.0.0",
-    "purescript-console": "^4.0.0",
-    "purescript-integers": "^4.0.0",
-    "purescript-math": "^2.1.1",
-    "purescript-unsafe-coerce": "^4.0.0"
+    "purescript-assert": "^5.0.0",
+    "purescript-console": "^5.0.0",
+    "purescript-integers": "^5.0.0",
+    "purescript-math": "^3.0.0",
+    "purescript-unsafe-coerce": "^5.0.0"
   }
 }

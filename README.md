@@ -1,14 +1,15 @@
 # purescript-foldable-traversable
 
 [![Latest release](http://img.shields.io/github/release/purescript/purescript-foldable-traversable.svg)](https://github.com/purescript/purescript-foldable-traversable/releases)
-[![Build status](https://travis-ci.org/purescript/purescript-foldable-traversable.svg?branch=master)](https://travis-ci.org/purescript/purescript-foldable-traversable)
+[![Build status](https://github.com/purescript/purescript-foldable-traversable/workflows/CI/badge.svg?branch=master)](https://github.com/purescript/purescript-foldable-traversable/actions?query=workflow%3ACI+branch%3Amaster)
+[![Pursuit](https://pursuit.purescript.org/packages/purescript-foldable-traversable/badge)](https://pursuit.purescript.org/packages/purescript-foldable-traversable)
 
 Classes for foldable and traversable data structures.
 
 ## Installation
 
 ```
-bower install purescript-foldable-traversable
+spago install foldable-traversable
 ```
 
 ## Documentation

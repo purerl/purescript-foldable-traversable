@@ -12,7 +12,15 @@ module Data.Traversable
 
 import Prelude
 
-import Data.Foldable (class Foldable, all, and, any, elem, find, fold, foldMap, foldMapDefaultL, foldMapDefaultR, foldl, foldlDefault, foldr, foldrDefault, for_, intercalate, maximum, maximumBy, minimum, minimumBy, notElem, oneOf, or, product, sequence_, sum, traverse_)
+import Control.Apply (lift2)
+import Data.Const (Const(..))
+import Data.Either (Either(..))
+import Data.Foldable (class Foldable, all, and, any, elem, find, fold, foldMap, foldMapDefaultL, foldMapDefaultR, foldl, foldlDefault, foldr, foldrDefault, for_, intercalate, maximum, maximumBy, minimum, minimumBy, notElem, oneOf, or, sequence_, sum, traverse_)
+import Data.Functor.App (App(..))
+import Data.Functor.Compose (Compose(..))
+import Data.Functor.Coproduct (Coproduct(..), coproduct)
+import Data.Functor.Product (Product(..), product)
+import Data.Identity (Identity(..))
 import Data.Maybe (Maybe(..))
 import Data.Maybe.First (First(..))
 import Data.Maybe.Last (Last(..))
@@ -23,6 +31,7 @@ import Data.Monoid.Dual (Dual(..))
 import Data.Monoid.Multiplicative (Multiplicative(..))
 import Data.Traversable.Accum (Accum)
 import Data.Traversable.Accum.Internal (StateL(..), StateR(..), stateL, stateR)
+import Data.Tuple (Tuple(..))
 
 -- | `Traversable` represents data structures which can be _traversed_,
 -- | accumulating results and effects in some `Applicative` functor.
@@ -31,6 +40,26 @@ import Data.Traversable.Accum.Internal (StateL(..), StateR(..), stateL, stateR)
 -- |   and accumulates the results.
 -- | - `sequence` runs the actions _contained_ in a data structure,
 -- |   and accumulates the results.
+-- |
+-- | ```purescript
+-- | import Data.Traversable
+-- | import Data.Maybe
+-- | import Data.Int (fromNumber)
+-- |
+-- | sequence [Just 1, Just 2, Just 3] == Just [1,2,3]
+-- | sequence [Nothing, Just 2, Just 3] == Nothing
+-- |
+-- | traverse fromNumber [1.0, 2.0, 3.0] == Just [1,2,3]
+-- | traverse fromNumber [1.5, 2.0, 3.0] == Nothing
+-- |
+-- | traverse logShow [1,2,3]
+-- | -- prints:
+-- |    1
+-- |    2
+-- |    3
+-- |
+-- | traverse (\x -> [x, 0]) [1,2,3] == [[1,2,3],[1,2,0],[1,0,3],[1,0,0],[0,2,3],[0,2,0],[0,0,3],[0,0,0]]
+-- | ```
 -- |
 -- | The `traverse` and `sequence` functions should be compatible in the
 -- | following sense:
@@ -117,6 +146,44 @@ instance traversableMultiplicative :: Traversable Multiplicative where
   traverse f (Multiplicative x) = Multiplicative <$> f x
   sequence (Multiplicative x) = Multiplicative <$> x
 
+instance traversableEither :: Traversable (Either a) where
+  traverse _ (Left x)  = pure (Left x)
+  traverse f (Right x) = Right <$> f x
+  sequence (Left x) = pure (Left x)
+  sequence (Right x)  = Right <$> x
+
+instance traversableTuple :: Traversable (Tuple a) where
+  traverse f (Tuple x y) = Tuple x <$> f y
+  sequence (Tuple x y) = Tuple x <$> y
+
+instance traversableIdentity :: Traversable Identity where
+  traverse f (Identity x) = Identity <$> f x
+  sequence (Identity x) = Identity <$> x
+
+instance traversableConst :: Traversable (Const a) where
+  traverse _ (Const x) = pure (Const x)
+  sequence (Const x) = pure (Const x)
+
+instance traversableProduct :: (Traversable f, Traversable g) => Traversable (Product f g) where
+  traverse f (Product (Tuple fa ga)) = lift2 product (traverse f fa) (traverse f ga)
+  sequence (Product (Tuple fa ga)) = lift2 product (sequence fa) (sequence ga)
+
+instance traversableCoproduct :: (Traversable f, Traversable g) => Traversable (Coproduct f g) where
+  traverse f = coproduct
+    (map (Coproduct <<< Left) <<< traverse f)
+    (map (Coproduct <<< Right) <<< traverse f)
+  sequence = coproduct
+    (map (Coproduct <<< Left) <<< sequence)
+    (map (Coproduct <<< Right) <<< sequence)
+
+instance traversableCompose :: (Traversable f, Traversable g) => Traversable (Compose f g) where
+  traverse f (Compose fga) = map Compose $ traverse (traverse f) fga
+  sequence = traverse identity
+
+instance traversableApp :: Traversable f => Traversable (App f) where
+  traverse f (App x) = App <$> traverse f x
+  sequence (App x) = App <$> sequence x
+
 -- | A version of `traverse` with its arguments flipped.
 -- |
 -- |
@@ -169,7 +236,7 @@ mapAccumL f s0 xs = stateL (traverse (\a -> StateL \s -> f s a) xs) s0
 -- | appear in the result (unlike Haskell's `Prelude.scanr`).
 -- |
 -- | ```purescript
--- | scanr (+) 0  [1,2,3] = [1,3,6]
+-- | scanr (+) 0 [1,2,3] = [6,5,3]
 -- | scanr (flip (-)) 10 [1,2,3] = [4,5,7]
 -- | ```
 scanr :: forall a b f. Traversable f => (a -> b -> b) -> b -> f a -> f b

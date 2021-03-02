@@ -38,3 +38,8 @@ exports.foldMap1NEArray = function (append) {
     };
   };
 };
+
+
+exports.deferEff = function (F) {
+  return F;
+};

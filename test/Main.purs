@@ -47,8 +47,7 @@ foldableLength :: forall f a. Foldable f => f a -> Int
 foldableLength = unwrap <<< foldMap (const (Additive 1))
 
 -- Ensure that a value is evaluated 'lazily' by treating it as an Eff action.
-deferEff :: forall a. (Unit -> a) -> Effect a
-deferEff = unsafeCoerce
+foreign import deferEff :: forall a. (Unit -> a) -> Effect a
 
 main :: Effect Unit
 main = do
@@ -299,9 +298,11 @@ testTraversableFWith f n = do
 
   _ <- traverse pure dat
 
+  
   assert' "traverse Just == Just" $ traverse Just dat == Just dat
   assert' "traverse pure == pure (Array)" $ traverse pure dat == [dat]
 
+  
   when (len <= 10) do
     result <- deferEff \_ -> traverse (\x -> [x,x]) dat == arrayReplicate (pow 2 len) dat
     assert' "traverse with Array as underlying applicative" result
